@@ -40,7 +40,7 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
     public void Initialize()
     {
         _blockMovementController.OnSwapBlock += SwapBlockHandler;
-        _blockMovementController.OnMoveBlock += FallTo;
+        _blockMovementController.OnFallBlock += FallTo;
         _blockMovementController.OnDestroyBlock += DestroyBlockHandler;
     }
 
@@ -65,7 +65,7 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
         if(model != _blockModel) return;
 
         _moveSequence = DOTween.Sequence();
-        _moveSequence.Append(transform.DOMove(position, _animationSettingsSo.SwapBlockMoveSpeed));
+        _moveSequence.Append(transform.DOMove(position, _animationSettingsSo.BlockMoveSpeed));
     }
     
     private void FallTo(BlockModel model, Vector3 position)
@@ -73,7 +73,7 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
         if(model != _blockModel) return;
     
         _moveSequence = DOTween.Sequence();
-        _moveSequence.Append(transform.DOMove(position, _animationSettingsSo.SwapBlockMoveSpeed));
+        _moveSequence.Append(transform.DOMove(position, _animationSettingsSo.BlockMoveSpeed).SetEase(Ease.InExpo));
     }
     
     
@@ -94,7 +94,7 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
     public void Dispose()
     {
         _blockMovementController.OnSwapBlock -= SwapBlockHandler;
-        _blockMovementController.OnMoveBlock -= FallTo;
+        _blockMovementController.OnFallBlock -= FallTo;
         _blockMovementController.OnDestroyBlock -= DestroyBlockHandler;
     }
     

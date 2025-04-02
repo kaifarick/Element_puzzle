@@ -10,7 +10,7 @@ public class SaveLevelService : ASaveService
     public void SaveData(BlocksModel blocks, int currentLevel)
     {
         List<BlockSaveData> blocksSaveData = new List<BlockSaveData>();
-        for (int col = 0; col < blocks.GetCollumnLengths(); col++)
+        for (int col = 0; col < blocks.GetColumnLengths(); col++)
         {
             for (int row = 0; row < blocks.GetRowLengths(); row++)
             {

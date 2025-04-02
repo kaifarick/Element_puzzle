@@ -26,7 +26,10 @@ public class BlockViewPool : MonoBehaviour, IInitializable, IDisposable
             string resourceName = GetResourceName(element);
             ABlockView prefab = Resources.Load<ABlockView>(resourceName);
             if (prefab == null)
-                throw new Exception($"Resource not found: {resourceName}");
+            {
+                Debug.LogError($"Resource not found: {resourceName}");
+                return;
+            }
 
             _prefabs[element] = prefab;
             Queue<ABlockView> queue = new Queue<ABlockView>();
@@ -44,7 +47,10 @@ public class BlockViewPool : MonoBehaviour, IInitializable, IDisposable
     public ABlockView Spawn(BlockElement element, Vector3 position, Quaternion rotation)
     {
         if (!_prefabs.ContainsKey(element))
-            throw new ArgumentException($"No prefab for element {element}");
+        {
+            Debug.LogError($"No prefab for element {element}");
+            return null;
+        }
 
         Queue<ABlockView> queue = _inactivePools[element];
         ABlockView blockView;
@@ -87,7 +93,9 @@ public class BlockViewPool : MonoBehaviour, IInitializable, IDisposable
             {
                 ABlockView blockView = queue.Dequeue();
                 if (blockView != null)
-                    Object.Destroy(blockView.gameObject);
+                {
+                    Destroy(blockView.gameObject);
+                }
             }
         }
         _inactivePools.Clear();

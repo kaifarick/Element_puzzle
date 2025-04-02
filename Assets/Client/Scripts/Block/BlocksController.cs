@@ -47,8 +47,11 @@ public class BlocksController: IInitializable, IDisposable
         return new Vector3(startPos.x + col * cellSize, startPos.y + row * cellSize, GetZPosition(row, col));
     }
     
-    float GetZPosition(int row, int column, float rowWeight = -1f, float columnWeight = -0.5f)
+    float GetZPosition(int row, int column)
     {
+        const float rowWeight = -1;
+        const float columnWeight = -0.5f;
+        
         return row * rowWeight + column * columnWeight;
     }
     

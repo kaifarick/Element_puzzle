@@ -28,7 +28,7 @@ public class BlocksModel
        return Blocks.GetLength(0);
     }
     
-    public int GetCollumnLengths()
+    public int GetColumnLengths()
     {
         return Blocks.GetLength(1);
     }

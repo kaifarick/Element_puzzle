@@ -43,13 +43,14 @@ public class BlockSpawner : IDisposable
 
         for (int row = 0; row < blocksModel.GetRowLengths(); row++)
         {
-            for (int col = 0; col < blocksModel.GetCollumnLengths(); col++)
+            for (int col = 0; col < blocksModel.GetColumnLengths(); col++)
             {
                 BlockModel model = blocksModel.GetBlockModelByPosition(row, col);
                 Vector3 pos = gridModel.GridStartPosition + new Vector2(col * cellSize, row * cellSize);
                 pos.z = GetZPosition(row, col);
 
                 ABlockView blockView = _blockViewPool.Spawn(model.Element, pos, Quaternion.identity);
+                if(blockView == null) return;
                 blockView.InitializeView(model, cellSize);
                 _blockViews.Add(model, blockView);
             }
