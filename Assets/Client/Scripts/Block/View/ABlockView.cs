@@ -25,6 +25,10 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
     private void Awake()
     {
        _spriteSize = spriteRenderer.sprite.bounds.size;
+       
+#if DEBUG_BUILD
+        _debugText.gameObject.SetActive(true);
+#endif
     }
 
 
