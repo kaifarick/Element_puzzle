@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: AnimationSettingsSO
   m_EditorClassIdentifier: 
   _destroyClip: {fileID: 7400000, guid: 16fbea19eb6d5bc49a1e3df6ab4fe56b, type: 2}
-  SwapBlockMoveSpeed: 0.1
+  BlockMoveSpeed: 0.15
