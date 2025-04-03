@@ -4,6 +4,6 @@ using UnityEngine;
 public class GridSettingsSO : ScriptableObject
 {
     public float BottomOffset = 1.0f;
-    public float MaxWidth = 0.9f;
-    public float MaxHeight = 0.75f;
+    public float MaxWidthFromScreenRatio = 0.9f;
+    public float MaxHeightFromScreenRatio = 0.75f;
 }

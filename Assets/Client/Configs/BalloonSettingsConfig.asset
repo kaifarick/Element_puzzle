@@ -14,16 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MaxBalloonCount: 3
   CheckSpawnDelay: 1
-  BottomMarginPercentage: 0.6
+  BottomMarginPercentage: 0.7
   SpawnTime:
     Min: 2
     Max: 8
   Speed:
-    Min: 15
-    Max: 20
+    Min: 30
+    Max: 40
   Amplitude:
-    Min: 0.8
+    Min: 0.7
     Max: 1
   SinusSpeed:
-    Min: 0.5
-    Max: 1.5
+    Min: 0.2
+    Max: 0.6
