@@ -19,26 +19,33 @@ public class LevelsDataService
     
     public async Task<LevelSaveData> GetLevelData()
     {
+        if (_currentLevelData?.LevelNumber == CurrentLevel) return _currentLevelData;
+        
         if (!_saveLevelService.HasSaveData())
         {
             try
             {
                 string jsonText = await _assetsSerializationService.LoadFileAsync($"level{CurrentLevel}.json");
-                return JsonUtility.FromJson<LevelSaveData>(jsonText) ?? await LoadFirstLevel();
+                _currentLevelData = JsonUtility.FromJson<LevelSaveData>(jsonText) ?? await LoadFirstLevel();
+                return _currentLevelData;
             }
             catch (Exception e)
             {
                 Debug.LogError($"Failed to load level data: {e.Message}");
-                return await LoadFirstLevel();
+                _currentLevelData = await LoadFirstLevel();
+                return _currentLevelData;
             }
         }
-    
-        return _saveLevelService.LoadData();
+
+        _currentLevelData = _saveLevelService.LoadData();
+        return _currentLevelData;
     }
 
     public void SwitchToNextLevel()
     {
         CurrentLevel += 1;
+
+        _currentLevelData = null;
     }
 
     private async Task<LevelSaveData> LoadFirstLevel()

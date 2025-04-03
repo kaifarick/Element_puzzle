@@ -12,6 +12,8 @@ public class ProjectContextInstaller : MonoInstaller
         Container.BindInstance(_gridSettingsSo).AsSingle();
         Container.BindInstance(_animationSettingsSo).AsSingle();
         Container.BindInstance(_balloonSettingsSo).AsSingle();
+        
+        Container.BindInterfacesAndSelfTo<TaskDelayService>().AsSingle();
 
         Container.BindInterfacesAndSelfTo<StreamingAssetsSerializationService>().AsSingle();
         Container.BindInterfacesAndSelfTo<SaveSerializationService>().AsSingle();

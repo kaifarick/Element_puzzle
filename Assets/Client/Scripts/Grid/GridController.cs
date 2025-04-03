@@ -39,10 +39,10 @@ public class GridController: IInitializable, IDisposable
         {
             Vector2 worldSize = _cameraService.GetWorldSize();
 
-            float targetFieldWidth = worldSize.x * _gridSettingsSo.MaxWidth;
+            float targetFieldWidth = worldSize.x * _gridSettingsSo.MaxWidthFromScreenRatio;
             float cellSizeFromWidth = targetFieldWidth / columns;
 
-            float availableHeightForGrid = worldSize.y * _gridSettingsSo.MaxHeight - _gridSettingsSo.BottomOffset;
+            float availableHeightForGrid = worldSize.y * _gridSettingsSo.MaxHeightFromScreenRatio - _gridSettingsSo.BottomOffset;
             float cellSizeFromHeight = availableHeightForGrid / rows;
             cellSize = Mathf.Min(cellSizeFromWidth, cellSizeFromHeight);
         }

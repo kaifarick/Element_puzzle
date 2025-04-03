@@ -11,6 +11,7 @@ public class BlockMovementController : IInitializable, IDisposable
     [Inject] private SwipeInputController _swipeInputController;
     [Inject] private AnimationSettingsSO _animationSettingsSo;
     [Inject] private LevelManagementService _levelManagementService;
+    [Inject] private TaskDelayService _taskDelayService;
 
     public event Action<BlockModel, Vector3> OnSwapBlock;
     public event Action<BlockModel, Vector3> OnFallBlock;
@@ -25,15 +26,7 @@ public class BlockMovementController : IInitializable, IDisposable
         _levelManagementService.OnNextLevel += NextLevelHandler;
     }
 
-    private void NextLevelHandler()
-    {
-        TaskUtils.CancelAll();
-    }
 
-    private void RestartLevelHandler()
-    {
-        TaskUtils.CancelAll();
-    }
 
     private void OnSwapRequestedHandler(SwipeEventArgs args)
     {
@@ -59,7 +52,8 @@ public class BlockMovementController : IInitializable, IDisposable
 
 
         var tokenSource = new CancellationTokenSource();
-        await TaskUtils.DelayedSwap(_animationSettingsSo.BlockMoveSpeed, tokenSource);
+        await _taskDelayService.DelayedSwap(TaskDelayService.DelayedEntityEnum.BlocksMovement,
+            _animationSettingsSo.BlockMoveSpeed, tokenSource);
 
         if (tokenSource.IsCancellationRequested)
         {
@@ -146,7 +140,8 @@ public class BlockMovementController : IInitializable, IDisposable
         }
         
         var tokenSource = new CancellationTokenSource();
-        await TaskUtils.DelayedSwap(_animationSettingsSo.BlockMoveSpeed, tokenSource);
+        await _taskDelayService.DelayedSwap(TaskDelayService.DelayedEntityEnum.BlocksMovement
+            ,_animationSettingsSo.BlockMoveSpeed, tokenSource);
 
         if (tokenSource.IsCancellationRequested)
         {
@@ -266,7 +261,8 @@ public class BlockMovementController : IInitializable, IDisposable
             }
             
             var tokenSource = new CancellationTokenSource();
-            await TaskUtils.DelayedSwap(_animationSettingsSo.DestructionSpeed, tokenSource);
+            await _taskDelayService.DelayedSwap(TaskDelayService.DelayedEntityEnum.BlocksMovement
+                ,_animationSettingsSo.DestructionSpeed, tokenSource);
 
             if (tokenSource.IsCancellationRequested)
             {
@@ -282,6 +278,16 @@ public class BlockMovementController : IInitializable, IDisposable
         }
         
         OnEndDestroyBlocks?.Invoke();
+    }
+    
+    private void NextLevelHandler()
+    {
+        _taskDelayService.CancelEntity(TaskDelayService.DelayedEntityEnum.BlocksMovement);
+    }
+
+    private void RestartLevelHandler()
+    {
+        _taskDelayService.CancelEntity(TaskDelayService.DelayedEntityEnum.BlocksMovement);
     }
     
     private struct GridPosition

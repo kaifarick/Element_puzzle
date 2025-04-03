@@ -3,7 +3,7 @@ using UnityEngine;
 using Zenject;
 using Random = UnityEngine.Random;
 
-public class BlocksController: IInitializable, IDisposable
+public class BlocksController: IDisposable
 {
     [Inject] private GridController _gridController;
     [Inject] private LevelsDataService _levelsDataService;
@@ -17,12 +17,10 @@ public class BlocksController: IInitializable, IDisposable
 
     public BlocksModel GetBlocksModel => _blocksModel;
 
+    [Inject]
     public void Initialize()
     {
-        CreateBlocksModel();
-        
-        _levelManagementService.OnNextLevel += CreateBlocksModel;
-        _levelManagementService.OnRestartLevel += CreateBlocksModel;
+        _gridController.OnGridModelCreate += CreateBlocksModel;
     }
 
     private async void CreateBlocksModel()
@@ -79,7 +77,6 @@ public class BlocksController: IInitializable, IDisposable
 
     public void Dispose()
     {
-        _levelManagementService.OnNextLevel -= CreateBlocksModel;
-        _levelManagementService.OnRestartLevel -= CreateBlocksModel;
+        _gridController.OnGridModelCreate -= CreateBlocksModel;
     }
 }
