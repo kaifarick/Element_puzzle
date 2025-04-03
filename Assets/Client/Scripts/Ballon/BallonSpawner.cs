@@ -1,9 +1,11 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
+using Random = UnityEngine.Random;
 
-public class BalloonSpawner : MonoBehaviour, IInitializable, ITickable
+public class BalloonSpawner : MonoBehaviour
 {
     [SerializeField] private BalloonView _balloonPrefab;
 
@@ -13,24 +15,40 @@ public class BalloonSpawner : MonoBehaviour, IInitializable, ITickable
     private List<BalloonView> _balloonPool = new();
     
     private float _nextSpawnTime;
+    private Coroutine _spawnCoroutine;
 
-    public void Initialize()
+    public void Start()
     {
-        SetNextTimeSpan();
+        _spawnCoroutine = StartCoroutine(SpawnRoutine());
     }
 
-    public void Tick()
+    private IEnumerator SpawnRoutine()
     {
-        if (GetActiveBalloonCount() < _balloonSettingsSo.MaxBalloonCount && Time.time >= _nextSpawnTime)
+        while (true)
         {
+            float delay = _nextSpawnTime - Time.time;
+            if (delay > 0)
+            {
+                yield return new WaitForSeconds(delay);
+            }
+            
+            while (GetActiveBalloonCount() >= _balloonSettingsSo.MaxBalloonCount)
+            {
+                Debug.Log("WaitForCheck");
+                yield return new WaitForSeconds(_balloonSettingsSo.CheckSpawnDelay);
+            }
+            
             SpawnBalloon();
-            SetNextTimeSpan();
+            SetNextSpawnTime();
         }
     }
 
-    private void SetNextTimeSpan()
+    private void SetNextSpawnTime()
     {
-        _nextSpawnTime = Time.time + Random.Range(_balloonSettingsSo.SpawnTime.Min, _balloonSettingsSo.SpawnTime.Max);
+        _nextSpawnTime = Time.time + Random.Range(
+            _balloonSettingsSo.SpawnTime.Min, 
+            _balloonSettingsSo.SpawnTime.Max
+        );
     }
 
     private int GetActiveBalloonCount()
@@ -46,25 +64,28 @@ public class BalloonSpawner : MonoBehaviour, IInitializable, ITickable
 
     private void SpawnBalloon()
     {
-       float spawnSpace = 1f;
+        float spawnSpace = 1f;
     
         Bounds screenBounds = _cameraService.GetScreenBounds();
+        Vector2 worldSize = _cameraService.GetWorldSize();
+        
+        float minAllowedY = screenBounds.min.y + (worldSize.y * _balloonSettingsSo.BottomMarginPercentage);
         int rand = Random.Range(0, _balloonSettingsSo.MaxBalloonCount - 1);
-
+        
         float startX = rand == 0 ? screenBounds.min.x - spawnSpace : screenBounds.max.x + spawnSpace;
-        float startY = Random.Range(screenBounds.min.y + spawnSpace, screenBounds.max.y);
+        float startY = Random.Range(minAllowedY, screenBounds.max.y);
         Vector3 startPos = new Vector3(startX, startY, 0);
-
+        
         float targetX = rand == 0 ? screenBounds.max.x + spawnSpace : screenBounds.min.x - spawnSpace;
-        float targetY = Random.Range(screenBounds.min.y + spawnSpace, screenBounds.max.y);
+        float targetY = Random.Range(minAllowedY, screenBounds.max.y);
         Vector3 target = new Vector3(targetX, targetY, 0);
-
-        float speed = Random.Range(_balloonSettingsSo.Speed.Min, _balloonSettingsSo.Speed.Max);
+        
+        float duration = Random.Range(_balloonSettingsSo.Speed.Min, _balloonSettingsSo.Speed.Max);
         float amplitude = Random.Range(_balloonSettingsSo.Amplitude.Min, _balloonSettingsSo.Amplitude.Max);
         float sinusSpeed = Random.Range(_balloonSettingsSo.SinusSpeed.Min, _balloonSettingsSo.SinusSpeed.Max);
 
         BalloonView balloon = GetBalloonFromPool();
-        balloon.Setup(startPos, target, speed, amplitude, sinusSpeed);
+        balloon.Setup(startPos, target, duration, amplitude, sinusSpeed);
     }
     
     private BalloonView GetBalloonFromPool()
@@ -79,5 +100,10 @@ public class BalloonSpawner : MonoBehaviour, IInitializable, ITickable
         BalloonView newBalloon = Instantiate(_balloonPrefab, transform);
         _balloonPool.Add(newBalloon);
         return newBalloon;
+    }
+
+    private void OnDisable()
+    {
+        StopCoroutine(_spawnCoroutine);
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 public class BalloonView : MonoBehaviour
@@ -6,45 +7,56 @@ public class BalloonView : MonoBehaviour
     [SerializeField] private List<Sprite> _sprites;
     [SerializeField] private SpriteRenderer _spriteRenderer;
     
-    private Vector3 _target;
-    private bool _move;
-    private float _speed;
+    private float _duration;
     private float _amplitude;
     private float _sinusSpeed;
+    private Vector3 _target;
+    
+    private Tween _moveTween;
+    private float _startY;
+    private float _initialTime;
 
-
-    public void Setup(Vector3 startPos, Vector3 target, float speed, float amplitude, float sinusSpeed)
+    public void Setup(Vector3 startPos, Vector3 target, float duration, float amplitude, float sinusSpeed)
     {
         _spriteRenderer.sprite = _sprites[Random.Range(0, _sprites.Count)];
-        
         transform.position = startPos;
         _target = target;
-        _speed = speed;
+        _duration = duration;
         _amplitude = amplitude;
         _sinusSpeed = sinusSpeed;
-        _move = true;
-        gameObject.SetActive(true);
+        _startY = startPos.y;
+        _initialTime = Time.time;
         
+        gameObject.SetActive(true);
+        StartCombinedMovement();
     }
     
-    private void Update()
+    private void StartCombinedMovement()
     {
-        if (!_move) return;
-        
-        Vector3 pos = transform.position;
-        pos.y += _amplitude * Mathf.Sin(Time.time * _sinusSpeed) * Time.deltaTime;
-        transform.position = pos;
-        transform.position = Vector3.MoveTowards(transform.position, _target, _speed * Time.deltaTime);
-        
-        if (Vector3.Distance(transform.position, _target) <= 0.01f)
-        {
-            ResetBalloon();
-        }
+        _moveTween = transform.DOMove(_target, _duration)
+            .SetEase(Ease.Linear)
+            .OnUpdate(ApplySinusoidalMovement).OnComplete(ResetBalloon);
+    }
+    
+    private void ApplySinusoidalMovement()
+    {
+        float timeSinceStart = Time.time - _initialTime;
+        float yOffset = Mathf.Sin(timeSinceStart * _sinusSpeed) * _amplitude;
+        transform.position = new Vector3(
+            transform.position.x,
+            _startY + yOffset,
+            transform.position.z
+        );
     }
     
     private void ResetBalloon()
     {
-        _move = false;
+        _moveTween?.Kill();
         gameObject.SetActive(false);
+    }
+    
+    private void OnDisable()
+    {
+        ResetBalloon();
     }
 }

@@ -13,15 +13,17 @@ MonoBehaviour:
   m_Name: BalloonSettingsConfig
   m_EditorClassIdentifier: 
   MaxBalloonCount: 3
+  CheckSpawnDelay: 1
+  BottomMarginPercentage: 0.6
   SpawnTime:
     Min: 2
-    Max: 15
+    Max: 8
   Speed:
-    Min: 0.1
-    Max: 0.3
+    Min: 15
+    Max: 20
   Amplitude:
-    Min: 0.1
-    Max: 0.3
+    Min: 0.8
+    Max: 1
   SinusSpeed:
-    Min: 0.1
-    Max: 0.5
+    Min: 0.5
+    Max: 1.5
