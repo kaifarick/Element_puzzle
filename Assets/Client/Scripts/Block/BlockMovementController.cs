@@ -275,9 +275,9 @@ public class BlockMovementController : IInitializable, IDisposable
             }
 
             NormalizeAllColumns(DestroyMatchesAndNormalize);
+            
+            OnEndDestroyBlocks?.Invoke();
         }
-        
-        OnEndDestroyBlocks?.Invoke();
     }
     
     private void NextLevelHandler()
