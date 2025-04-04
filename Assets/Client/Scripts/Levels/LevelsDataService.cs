@@ -19,7 +19,7 @@ public class LevelsDataService
     
     public async Task<LevelSaveData> GetLevelData()
     {
-        if (_currentLevelData?.LevelNumber == CurrentLevel) return _currentLevelData;
+        //if (_currentLevelData?.LevelNumber == CurrentLevel) return _currentLevelData;
         
         if (!_saveLevelService.HasSaveData())
         {

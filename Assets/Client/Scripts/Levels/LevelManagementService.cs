@@ -10,6 +10,7 @@ public class LevelManagementService: IInitializable, IDisposable
     [Inject] private BlocksController _blocksController;
     [Inject] private LevelsDataService _levelsDataService;
     [Inject] private SaveLevelService _saveLevelService;
+    [Inject] private TaskDelayService _taskDelayService;
     
     public void Initialize()
     {
@@ -26,12 +27,14 @@ public class LevelManagementService: IInitializable, IDisposable
 
     public void RestartLevel()
     {
+        _taskDelayService.CancelEntity(TaskDelayService.DelayedEntityEnum.BlocksMovement);
         _saveLevelService.DeleteSaveData();
         OnRestartLevel?.Invoke();
     }
 
     public void NextLevel()
     {
+        _taskDelayService.CancelEntity(TaskDelayService.DelayedEntityEnum.BlocksMovement);
         _saveLevelService.DeleteSaveData();
         _levelsDataService.SwitchToNextLevel();
         OnNextLevel?.Invoke();
