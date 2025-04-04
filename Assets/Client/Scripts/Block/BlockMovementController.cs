@@ -72,9 +72,6 @@ public class BlockMovementController : IInitializable, IDisposable
             _blocksController.ChangeBlockedStatus(row, sourceCol, blocked);
             _blocksController.ChangeBlockedStatus(row, targetCol, blocked);
         }
-        
-      //  _blocksController.ChangeBlockedStatus(sourceRow, sourceCol, blocked);
-       // _blocksController.ChangeBlockedStatus(targetRow, targetCol, blocked);
     }
     private async void NormalizeAllColumns(Action onNormalize)
     {
@@ -277,6 +274,12 @@ public class BlockMovementController : IInitializable, IDisposable
             NormalizeAllColumns(DestroyMatchesAndNormalize);
             
             OnEndDestroyBlocks?.Invoke();
+        }
+
+        if (!_taskDelayService.HasWaiting(TaskDelayService.DelayedEntityEnum.BlocksMovement)
+            && !_blocksController.IsAllElementEmpty())
+        {
+            _blocksController.SaveBlocks();
         }
     }
     

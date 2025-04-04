@@ -56,7 +56,6 @@ public class BlocksController: IDisposable
     public void SwapBlockReferences(int sourceRow, int sourceCol, int targetRow, int targetCol)
     {
         _blocksModel.SwapBlockPositions(sourceRow,sourceCol, targetRow, targetCol);
-        _saveLevelService.SaveData(GetBlocksModel,_levelsDataService.CurrentLevel);
     }
 
     public void ChangeBlockedStatus(int row, int col, bool blocked)
@@ -67,12 +66,16 @@ public class BlocksController: IDisposable
     public void SetBlockEmptyState(int row, int col)
     {
         _blocksModel.ChangeBlockElement(row,col,BlockElement.Empty);
-        _saveLevelService.SaveData(GetBlocksModel,_levelsDataService.CurrentLevel);
     }
 
     public bool IsAllElementEmpty()
     {
         return _blocksModel.IsAllElementsEmpty();
+    }
+
+    public void SaveBlocks()
+    {
+        _saveLevelService.SaveData(GetBlocksModel,_levelsDataService.CurrentLevel);
     }
 
     public void Dispose()

@@ -46,6 +46,11 @@ public class TaskDelayService
             _activeTokens[delayedEntity].Remove(token);
         }
     }
+
+    public bool HasWaiting(DelayedEntityEnum delayedEntity)
+    {
+        return _activeTokens.ContainsKey(delayedEntity) && _activeTokens[delayedEntity].Count > 0;
+    }
     
     public enum DelayedEntityEnum
     {
