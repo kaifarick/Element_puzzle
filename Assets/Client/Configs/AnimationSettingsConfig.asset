@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe75c8e261f0f4039ad3a610ec186729, type: 3}
-  m_Name: AnimationSettingsSO
+  m_Name: AnimationSettingsConfig
   m_EditorClassIdentifier: 
   _destroyClip: {fileID: 7400000, guid: 16fbea19eb6d5bc49a1e3df6ab4fe56b, type: 2}
   BlockMoveSpeed: 0.15

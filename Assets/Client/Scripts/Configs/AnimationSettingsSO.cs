@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 
 [CreateAssetMenu(fileName = nameof(AnimationSettingsSO), menuName = "ScriptableObject/"+nameof(AnimationSettingsSO), order = 51)]
 public class AnimationSettingsSO : ScriptableObject

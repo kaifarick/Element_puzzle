@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,33 +10,32 @@ public class BalloonSpawner : MonoBehaviour
 
     [Inject] private CameraService _cameraService;
     [Inject] private BalloonSettingsSO _balloonSettingsSo;
-    
+
     private List<BalloonView> _balloonPool = new();
-    
+
     private float _nextSpawnTime;
     private Coroutine _spawnCoroutine;
 
-    public void Start()
+    private void OnEnable()
     {
         _spawnCoroutine = StartCoroutine(SpawnRoutine());
+    }
+
+    private void OnDisable()
+    {
+        if (_spawnCoroutine != null)
+            StopCoroutine(_spawnCoroutine);
     }
 
     private IEnumerator SpawnRoutine()
     {
         while (true)
         {
-            float delay = _nextSpawnTime - Time.time;
-            if (delay > 0)
+            while (Time.time < _nextSpawnTime || GetActiveBalloonCount() >= _balloonSettingsSo.MaxBalloonCount)
             {
-                yield return new WaitForSeconds(delay);
-            }
-            
-            while (GetActiveBalloonCount() >= _balloonSettingsSo.MaxBalloonCount)
-            {
-                Debug.Log("WaitForCheck");
                 yield return new WaitForSeconds(_balloonSettingsSo.CheckSpawnDelay);
             }
-            
+
             SpawnBalloon();
             SetNextSpawnTime();
         }
@@ -46,7 +44,7 @@ public class BalloonSpawner : MonoBehaviour
     private void SetNextSpawnTime()
     {
         _nextSpawnTime = Time.time + Random.Range(
-            _balloonSettingsSo.SpawnTime.Min, 
+            _balloonSettingsSo.SpawnTime.Min,
             _balloonSettingsSo.SpawnTime.Max
         );
     }
@@ -64,46 +62,43 @@ public class BalloonSpawner : MonoBehaviour
 
     private void SpawnBalloon()
     {
-        float spawnSpace = 1f;
-    
+        int direction = Random.value < 0.5f ? 0 : 1;
+
+        var (startPos, targetPos) = GetSpawnAndTargetPosition(direction);
+
+        var speed = Random.Range(_balloonSettingsSo.Speed.Min, _balloonSettingsSo.Speed.Max);
+        var amplitude = Random.Range(_balloonSettingsSo.Amplitude.Min, _balloonSettingsSo.Amplitude.Max);
+        var sinusSpeed = Random.Range(_balloonSettingsSo.SinusSpeed.Min, _balloonSettingsSo.SinusSpeed.Max);
+
+        var balloon = GetBalloonFromPool();
+        balloon.Setup(startPos, targetPos, speed, amplitude, sinusSpeed);
+    }
+
+    private (Vector3 start, Vector3 target) GetSpawnAndTargetPosition(int direction)
+    {
+        float spawnOffset = 1f;
         Bounds screenBounds = _cameraService.GetScreenBounds();
         Vector2 worldSize = _cameraService.GetWorldSize();
-        
-        float minAllowedY = screenBounds.min.y + (worldSize.y * _balloonSettingsSo.BottomMarginPercentage);
-        int rand = Random.Range(0, _balloonSettingsSo.MaxBalloonCount - 1);
-        
-        float startX = rand == 0 ? screenBounds.min.x - spawnSpace : screenBounds.max.x + spawnSpace;
-        float startY = Random.Range(minAllowedY, screenBounds.max.y);
-        Vector3 startPos = new Vector3(startX, startY, 0);
-        
-        float targetX = rand == 0 ? screenBounds.max.x + spawnSpace : screenBounds.min.x - spawnSpace;
-        float targetY = Random.Range(minAllowedY, screenBounds.max.y);
-        Vector3 target = new Vector3(targetX, targetY, 0);
-        
-        float duration = Random.Range(_balloonSettingsSo.Speed.Min, _balloonSettingsSo.Speed.Max);
-        float amplitude = Random.Range(_balloonSettingsSo.Amplitude.Min, _balloonSettingsSo.Amplitude.Max);
-        float sinusSpeed = Random.Range(_balloonSettingsSo.SinusSpeed.Min, _balloonSettingsSo.SinusSpeed.Max);
 
-        BalloonView balloon = GetBalloonFromPool();
-        balloon.Setup(startPos, target, duration, amplitude, sinusSpeed);
+        float minY = screenBounds.min.y + worldSize.y * _balloonSettingsSo.BottomMarginPercentage;
+        float startX = direction == 0 ? screenBounds.min.x - spawnOffset : screenBounds.max.x + spawnOffset;
+        float startY = Random.Range(minY, screenBounds.max.y);
+        float targetX = direction == 0 ? screenBounds.max.x + spawnOffset : screenBounds.min.x - spawnOffset;
+        float targetY = Random.Range(minY, screenBounds.max.y);
+
+        return (new Vector3(startX, startY, 0), new Vector3(targetX, targetY, 0));
     }
-    
+
     private BalloonView GetBalloonFromPool()
     {
         foreach (var balloon in _balloonPool)
         {
             if (!balloon.gameObject.activeSelf)
-            {
                 return balloon;
-            }
         }
-        BalloonView newBalloon = Instantiate(_balloonPrefab, transform);
+
+        var newBalloon = Instantiate(_balloonPrefab, transform);
         _balloonPool.Add(newBalloon);
         return newBalloon;
-    }
-
-    private void OnDisable()
-    {
-        StopCoroutine(_spawnCoroutine);
     }
 }

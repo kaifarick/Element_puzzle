@@ -37,27 +37,26 @@ public class BlockSpawner : IDisposable
 
     private void InitializeBlockView()
     {
-        GridModel gridModel = _gridController.GetGridModel;
-        BlocksModel blocksModel = _blocksController.GetBlocksModel;
-        float cellSize = gridModel.CellSize;
+        var gridLenght = _gridController.GetGridLenght();
+        var cellSize = _gridController.GetGridCellSize();
 
-        for (int row = 0; row < blocksModel.GetRowLengths(); row++)
+        for (int row = 0; row < gridLenght.row; row++)
         {
-            for (int col = 0; col < blocksModel.GetColumnLengths(); col++)
+            for (int col = 0; col < gridLenght.col; col++)
             {
-                BlockModel model = blocksModel.GetBlockModelByPosition(row, col);
-                Vector3 pos = gridModel.GridStartPosition + new Vector2(col * cellSize, row * cellSize);
+                BlockModel model = _blocksController.GetBlockModelByPosition(row, col);
+                Vector3 pos = _gridController.GetGridStartPosition() + new Vector2(col * cellSize, row * cellSize);
                 pos.z = GetZPosition(row, col);
 
                 ABlockView blockView = _blockViewPool.Spawn(model.Element, pos, Quaternion.identity);
                 if(blockView == null) return;
-                blockView.InitializeView(model, cellSize);
+                blockView.InitializeView(model.Id, cellSize);
                 _blockViews.Add(model, blockView);
             }
         }
     }
 
-    float GetZPosition(int row, int column, float rowWeight = -1f, float columnWeight = -0.5f)
+    private float GetZPosition(int row, int column, float rowWeight = -1f, float columnWeight = -0.5f)
     {
         return row * rowWeight + column * columnWeight;
     }

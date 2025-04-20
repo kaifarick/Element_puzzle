@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using Zenject;
-using Random = UnityEngine.Random;
 
 public class BlocksController: IDisposable
 {
@@ -11,11 +10,9 @@ public class BlocksController: IDisposable
     [Inject] private SaveLevelService _saveLevelService;
 
     private BlocksModel _blocksModel;
-    private GridModel _gridModel => _gridController.GetGridModel;
     
     public event Action OnBlocksModelCreate;
-
-    public BlocksModel GetBlocksModel => _blocksModel;
+    
 
     [Inject]
     public void Initialize()
@@ -29,7 +26,7 @@ public class BlocksController: IDisposable
         _blocksModel = new BlocksModel(levelData.Blocks);
         OnBlocksModelCreate?.Invoke();
         
-        _saveLevelService.SaveData(GetBlocksModel,_levelsDataService.CurrentLevel);
+        _saveLevelService.SaveData(_blocksModel);
     }
     
     
@@ -40,8 +37,8 @@ public class BlocksController: IDisposable
     
     public Vector3 CalculateCellPosition(int row, int col)
     {
-        Vector2 startPos = _gridModel.GridStartPosition;
-        float cellSize = _gridModel.CellSize;
+        Vector2 startPos = _gridController.GetGridStartPosition();
+        float cellSize = _gridController.GetGridCellSize();
         return new Vector3(startPos.x + col * cellSize, startPos.y + row * cellSize, GetZPosition(row, col));
     }
     
@@ -75,7 +72,7 @@ public class BlocksController: IDisposable
 
     public void SaveBlocks()
     {
-        _saveLevelService.SaveData(GetBlocksModel,_levelsDataService.CurrentLevel);
+        _saveLevelService.SaveData(_blocksModel);
     }
 
     public void Dispose()

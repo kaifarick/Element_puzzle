@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class AnimatorStateService : MonoBehaviour
+public class AnimationEventHandler : MonoBehaviour
 {
     [SerializeField] private SpriteRenderer spriteRenderer;
     

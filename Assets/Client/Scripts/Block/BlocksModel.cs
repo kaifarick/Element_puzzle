@@ -9,16 +9,19 @@ public class BlocksModel
     public BlocksModel(List<BlockSaveData> blockSaveDataList)
     {
         if (blockSaveDataList == null || blockSaveDataList.Count == 0)
+        {
             throw new ArgumentException("Список блоков пуст или null.", nameof(blockSaveDataList));
+        }
         
         int rows = blockSaveDataList.Max(b => b.Row) + 1;
         int columns = blockSaveDataList.Max(b => b.Column) + 1;
 
         Blocks = new BlockModel[rows, columns];
 
-        foreach (var data in blockSaveDataList)
+        for (var index = 0; index < blockSaveDataList.Count; index++)
         {
-            Blocks[data.Row, data.Column] = new BlockModel(data.Element, data.Row, data.Column);
+            var data = blockSaveDataList[index];
+            Blocks[data.Row, data.Column] = new BlockModel(data.Element, data.Row, data.Column, index);
         }
     }
 
@@ -41,7 +44,9 @@ public class BlocksModel
     public void SwapBlockPositions(int firstRow, int firstColumn, int secondRow, int secondColumn)
     {
         if (!IsInArray(firstRow, firstColumn) || !IsInArray(secondRow, secondColumn))
+        {
             return;
+        }
 
         var firstBlock = Blocks[firstRow, firstColumn];
         var secondBlock = Blocks[secondRow, secondColumn];

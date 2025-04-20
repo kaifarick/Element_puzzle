@@ -1,13 +1,10 @@
 using System;
 using System.Linq;
-using System.Runtime.InteropServices;
 using UnityEngine;
 using Zenject;
 
 public class GridController: IInitializable, IDisposable
 {
-    private GridModel _gridModel;
-    
     public event Action OnGridModelCreate;
     
     [Inject] private CameraService _cameraService;
@@ -16,7 +13,7 @@ public class GridController: IInitializable, IDisposable
     [Inject] private GridSettingsSO _gridSettingsSo;
     [Inject] private LevelManagementService _levelManagementService;
     
-    public GridModel GetGridModel => _gridModel;
+    private GridModel _gridModel;
     
     public void Initialize()
     {
@@ -70,7 +67,7 @@ public class GridController: IInitializable, IDisposable
 
     public bool GetGridCoordinate(Vector3 worldPos, out int row, out int col)
     {
-        var gridStartPosition = new Vector2(_gridModel.GridStartPosition.x - _gridModel.CellSize/2, GetGridModel.GridStartPosition.y - _gridModel.CellSize/2);
+        var gridStartPosition = new Vector2(_gridModel.GridStartPosition.x - _gridModel.CellSize/2, _gridModel.GridStartPosition.y - _gridModel.CellSize/2);
         var cellSize = _gridModel.CellSize;
         
         Vector2 offset = new Vector2(worldPos.x - gridStartPosition.x, worldPos.y - gridStartPosition.y);
@@ -79,6 +76,21 @@ public class GridController: IInitializable, IDisposable
 
         bool isInGrid = (row >= 0 && row < _gridModel.Rows && col >= 0 && col < _gridModel.Columns);
         return isInGrid;
+    }
+
+    public (int row, int col ) GetGridLenght()
+    {
+        return (_gridModel.Rows, _gridModel.Columns);
+    }
+
+    public float GetGridCellSize()
+    {
+       return _gridModel.CellSize;
+    }
+
+    public Vector2 GetGridStartPosition()
+    {
+       return _gridModel.GridStartPosition;
     }
     
     public void Dispose()

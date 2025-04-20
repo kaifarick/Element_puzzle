@@ -2,9 +2,9 @@ public class FireBlockView : ABlockView
 {
     public override BlockElement BlockElement => BlockElement.Fire;
 
-    public override void InitializeView(BlockModel blockModel, float cellSize)
+    public override void InitializeView(int id, float cellSize)
     {
-        base.InitializeView(blockModel, cellSize);
+        base.InitializeView(id, cellSize);
         
         spriteRenderer.gameObject.SetActive(true);
     }

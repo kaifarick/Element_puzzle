@@ -7,7 +7,7 @@ public class SaveLevelService : ASaveService
     
     [Inject] private SaveSerializationService _saveSerializationService;
 
-    public void SaveData(BlocksModel blocks, int currentLevel)
+    public void SaveData(BlocksModel blocks)
     {
         List<BlockSaveData> blocksSaveData = new List<BlockSaveData>();
         for (int col = 0; col < blocks.GetColumnLengths(); col++)
@@ -26,7 +26,6 @@ public class SaveLevelService : ASaveService
         
         var levelData = new LevelSaveData()
         {
-            LevelNumber = currentLevel,
             Blocks = blocksSaveData,
         };
         _saveSerializationService.SaveAsync(SaveName, levelData);

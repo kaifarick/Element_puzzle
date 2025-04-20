@@ -2,10 +2,10 @@ using System;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Serialization;
 using Zenject;
+using Sequence = DG.Tweening.Sequence;
 
-public abstract class ABlockView : MonoBehaviour, IDisposable
+public abstract class ABlockView : MonoBehaviour
 {
     public abstract BlockElement BlockElement { get; }
     
@@ -17,8 +17,8 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
     [Inject] private BlockMovementController _blockMovementController;
     [Inject] private LevelManagementService _levelManagementService;
     [Inject] private AnimationSettingsSO _animationSettingsSo;
-    
-    private BlockModel _blockModel;
+
+    private int _id;
     private Vector3 _spriteSize;
     private Sequence _moveSequence;
 
@@ -30,51 +30,44 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
         _debugText.gameObject.SetActive(true);
 #endif
     }
-
-
-    public virtual void InitializeView(BlockModel blockModel, float cellSize)
-    {
-        _blockModel = blockModel;
-        
-        SetSize(cellSize);
-        
-    }
     
-    [Inject]
-    public void Initialize()
+    public void OnEnable()
     {
         _blockMovementController.OnSwapBlock += SwapBlockHandler;
         _blockMovementController.OnFallBlock += FallTo;
         _blockMovementController.OnDestroyBlock += DestroyBlockHandler;
     }
 
-    private void DestroyBlockHandler(BlockModel model)
+
+    public virtual void InitializeView(int id, float cellSize)
     {
-        if (model != _blockModel) return;
+        _id = id;
+        SetSize(cellSize);
+    }
+
+    private void DestroyBlockHandler(int blockId)
+    {
+        if(_id != blockId) return;
 
         AnimatorStateInfo currentState = _animator.GetCurrentAnimatorStateInfo(0);
         
-        _animator.Play(
-            currentState.fullPathHash,
-            0,
-            0.8f / 100f
-        );
-        
+        var normalizedTime = 0.8f;
+        _animator.Play(currentState.fullPathHash, 0, normalizedTime);
         _animator.Update(0.001f);
         _animator.SetTrigger("Destroy");
     }
     
-    private void SwapBlockHandler(BlockModel model, Vector3 position)
+    private void SwapBlockHandler(int blockId, Vector3 position)
     {
-        if(model != _blockModel) return;
+        if(_id != blockId) return;
 
         _moveSequence = DOTween.Sequence();
         _moveSequence.Append(transform.DOMove(position, _animationSettingsSo.BlockMoveSpeed));
     }
     
-    private void FallTo(BlockModel model, Vector3 position)
+    private void FallTo(int blockId, Vector3 position)
     {
-        if(model != _blockModel) return;
+        if(_id != blockId) return;
     
         _moveSequence = DOTween.Sequence();
         _moveSequence.Append(transform.DOMove(position, _animationSettingsSo.BlockMoveSpeed).SetEase(Ease.InExpo));
@@ -93,10 +86,8 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
     private void OnDisable()
     {
         _moveSequence.Pause();
-    }
-    
-    public void Dispose()
-    {
+        _id = Int32.MaxValue;
+        
         _blockMovementController.OnSwapBlock -= SwapBlockHandler;
         _blockMovementController.OnFallBlock -= FallTo;
         _blockMovementController.OnDestroyBlock -= DestroyBlockHandler;
@@ -106,7 +97,8 @@ public abstract class ABlockView : MonoBehaviour, IDisposable
     
     private void Update()
     {
-        _debugText.text = $"Row {_blockModel.Row}\n Col {_blockModel.Column}\n Bl {_blockModel.IsBlocked}";
+       // _debugText.text = $"Row {_blockModel.Row}\n Col {_blockModel.Column}\n Bl {_blockModel.IsBlocked}";
+       _debugText.text = $"{_id}";
     }
     
 #endif

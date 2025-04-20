@@ -5,7 +5,6 @@ using Zenject;
 
 public class GameInitializer : MonoBehaviour
 {
-    
     [Inject] private LevelsDataService _levelsDataService;
     
     public void Start()
@@ -17,7 +16,6 @@ public class GameInitializer : MonoBehaviour
 
     private IEnumerator InitializeService()
     {
-        
         yield return SceneManager.LoadSceneAsync((int)Scene.Main, LoadSceneMode.Additive);
         
         yield return null;

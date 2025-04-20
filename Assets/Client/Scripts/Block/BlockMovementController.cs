@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
 
@@ -11,140 +12,87 @@ public class BlockMovementController : IInitializable, IDisposable
     [Inject] private SwipeInputController _swipeInputController;
     [Inject] private AnimationSettingsSO _animationSettingsSo;
     [Inject] private LevelManagementService _levelManagementService;
+    [Inject] private GridController _gridController;
     [Inject] private TaskDelayService _taskDelayService;
 
-    public event Action<BlockModel, Vector3> OnSwapBlock;
-    public event Action<BlockModel, Vector3> OnFallBlock;
-    public event Action<BlockModel> OnDestroyBlock;
+    public event Action<int, Vector3> OnSwapBlock;
+    public event Action<int, Vector3> OnFallBlock;
+    public event Action<int> OnDestroyBlock;
     public event Action OnEndDestroyBlocks;
-    
 
+    private const int CELL_TO_MATCH = 3;
+    
     public void Initialize()
     {
-        _swipeInputController.OnSwapRequested += OnSwapRequestedHandler;
+        _swipeInputController.OnSwapRequested += SwapRequestedHandler;
         _levelManagementService.OnRestartLevel += RestartLevelHandler;
         _levelManagementService.OnNextLevel += NextLevelHandler;
     }
 
+    public void Dispose()
+    {
+        _swipeInputController.OnSwapRequested -= SwapRequestedHandler;
+        _levelManagementService.OnRestartLevel -= RestartLevelHandler;
+        _levelManagementService.OnNextLevel -= NextLevelHandler;
+    }
 
-
-    private void OnSwapRequestedHandler(SwipeEventArgs args)
+    private void SwapRequestedHandler(SwipeEventArgs args)
     {
         SwapBlocks(args.SourceRow, args.SourceCol, args.TargetRow, args.TargetCol);
     }
-    
-    private async void SwapBlocks(int sourceRow, int sourceCol, int targetRow, int targetCol, bool normalize = true)
+
+    private async void SwapBlocks(int sourceRow, int sourceCol, int targetRow, int targetCol)
     {
-        BlockModel sourceObj = _blocksController.GetBlockModelByPosition(sourceRow, sourceCol);
-        BlockModel targetObj = _blocksController.GetBlockModelByPosition(targetRow, targetCol);
-        if (sourceObj == null || targetObj == null || sourceObj.IsBlocked || targetObj.IsBlocked)
-            return;
+        var (source, target) = GetSwappableBlocks(sourceRow, sourceCol, targetRow, targetCol);
+        if (source == null || target == null) return;
 
-        Vector3 posSource = _blockSpawner.GetBlockViewByModel(sourceObj).transform.position;
-        Vector3 posTarget = _blockSpawner.GetBlockViewByModel(targetObj).transform.position;
+        Vector3 posSource = _blockSpawner.GetBlockViewByModel(source).transform.position;
+        Vector3 posTarget = _blockSpawner.GetBlockViewByModel(target).transform.position;
 
-        ChangeBlockedStatus(sourceCol,targetCol, true);
-
+        ChangeBlockedStatus(sourceCol, targetCol, true);
         _blocksController.SwapBlockReferences(sourceRow, sourceCol, targetRow, targetCol);
 
-        OnSwapBlock?.Invoke(sourceObj, posTarget);
-        OnSwapBlock?.Invoke(targetObj, posSource);
+        OnSwapBlock?.Invoke(source.Id, posTarget);
+        OnSwapBlock?.Invoke(target.Id, posSource);
 
+        await WaitForAnimation();
 
-        var tokenSource = new CancellationTokenSource();
-        await _taskDelayService.DelayedSwap(TaskDelayService.DelayedEntityEnum.BlocksMovement,
-            _animationSettingsSo.BlockMoveSpeed, tokenSource);
-
-        if (tokenSource.IsCancellationRequested)
-        {
-            return;
-        } 
-        
         ChangeBlockedStatus(sourceCol, targetCol, false);
-
         NormalizeAllColumns(DestroyMatchesAndNormalize);
     }
 
-    private void ChangeBlockedStatus(int sourceCol, int targetCol, bool blocked)
+    private (BlockModel source, BlockModel target) GetSwappableBlocks(int sourceRow, int sourceCol, int targetRow, int targetCol)
     {
-        for (int row = 0; row < _blocksController.GetBlocksModel.GetRowLengths(); row++)
+        var source = _blocksController.GetBlockModelByPosition(sourceRow, sourceCol);
+        var target = _blocksController.GetBlockModelByPosition(targetRow, targetCol);
+
+        if (source == null || target == null || source.IsBlocked || target.IsBlocked)
         {
-            _blocksController.ChangeBlockedStatus(row, sourceCol, blocked);
-            _blocksController.ChangeBlockedStatus(row, targetCol, blocked);
+            return (null, null);
         }
+
+        return (source, target);
     }
+
     private async void NormalizeAllColumns(Action onNormalize)
     {
-        int rows = _blocksController.GetBlocksModel.GetRowLengths();
-        int columns = _blocksController.GetBlocksModel.GetColumnLengths();
-        List<NormalizationMove> moves = new List<NormalizationMove>();
-
-        for (int col = 0; col < columns; col++)
-        {
-            int targetRow = 0;
-            for (int row = 0; row < rows; row++)
-            {
-                BlockModel model = _blocksController.GetBlockModelByPosition(row, col);
-                if (!model.IsEmptyElement && !model.IsBlocked)
-                {
-                    var targetRowModel = _blocksController.GetBlockModelByPosition(targetRow, col);
-                    if (row != targetRow && !targetRowModel.IsBlocked)
-                    {
-                        moves.Add(new NormalizationMove
-                        {
-                            SourceRow = row,
-                            Column = col,
-                            TargetRow = targetRow
-                        });
-                    }
-                    targetRow++;
-                }
-            }
-        }
-
+        var moves = GetNormalizationMoves();
         if (moves.Count == 0)
         {
             onNormalize?.Invoke();
             return;
         }
-        
+
         foreach (var move in moves)
         {
             ChangeBlockedStatus(move.Column, move.Column, true);
-        }
-
-        foreach (var move in moves)
-        {
             _blocksController.SwapBlockReferences(move.SourceRow, move.Column, move.TargetRow, move.Column);
         }
-        
-        
-        foreach (var move in moves)
-        {
-            BlockModel model = _blocksController.GetBlockModelByPosition(move.TargetRow, move.Column);
-            if (model == null) continue;
-            ABlockView blockView = _blockSpawner.GetBlockViewByModel(model);
-            if (blockView == null) continue;
-            Vector3 targetPos = _blocksController.CalculateCellPosition(move.TargetRow, move.Column);
-            OnFallBlock?.Invoke(model, targetPos);
 
-            BlockModel model1 = _blocksController.GetBlockModelByPosition(move.SourceRow, move.Column);
-            if (model1 == null) continue;
-            ABlockView blockView1 = _blockSpawner.GetBlockViewByModel(model1);
-            if (blockView1 == null) continue;
-            Vector3 targetPos1 = _blocksController.CalculateCellPosition(move.SourceRow, move.Column);
-            OnFallBlock?.Invoke(model1, targetPos1);
-        }
-        
-        var tokenSource = new CancellationTokenSource();
-        await _taskDelayService.DelayedSwap(TaskDelayService.DelayedEntityEnum.BlocksMovement
-            ,_animationSettingsSo.BlockMoveSpeed, tokenSource);
+        AnimateFall(moves);
 
-        if (tokenSource.IsCancellationRequested)
-        {
-            return;
-        } 
-        
+        await WaitForAnimation();
+
         foreach (var move in moves)
         {
             ChangeBlockedStatus(move.Column, move.Column, false);
@@ -153,136 +101,186 @@ public class BlockMovementController : IInitializable, IDisposable
         DestroyMatchesAndNormalize();
     }
 
-    private List<GridPosition> FindMatches()
+    private List<NormalizationMove> GetNormalizationMoves()
     {
-        int rows = _blocksController.GetBlocksModel.GetRowLengths();
-        int cols = _blocksController.GetBlocksModel.GetColumnLengths();
+        var moves = new List<NormalizationMove>();
+        var gridLenght = _gridController.GetGridLenght();
 
-        HashSet<GridPosition> uniqueMatches = new HashSet<GridPosition>();
-
-        int cellToMatch = 3;
-
-        for (int row = 0; row < rows; row++)
+        for (int col = 0; col < gridLenght.col; col++)
         {
-            int start = 0;
-            while (start < cols)
+            int targetRow = 0;
+            for (int row = 0; row < gridLenght.row; row++)
             {
-                BlockModel current = _blocksController.GetBlockModelByPosition(row, start);
-                if (current == null || current.IsEmptyElement || current.IsBlocked)
+                var model = _blocksController.GetBlockModelByPosition(row, col);
+                if (!model.IsEmptyElement && !model.IsBlocked)
                 {
-                    start++;
-                    continue;
-                }
-
-                int end = start + 1;
-                while (end < cols)
-                {
-                    BlockModel next = _blocksController.GetBlockModelByPosition(row, end);
-                    if (next == null || next.IsEmptyElement || next.IsBlocked || next.Element != current.Element)
+                    var target = _blocksController.GetBlockModelByPosition(targetRow, col);
+                    if (row != targetRow && !target.IsBlocked)
                     {
-                        break;
+                        moves.Add(new NormalizationMove { SourceRow = row, Column = col, TargetRow = targetRow });
                     }
-
-                    end++;
+                    targetRow++;
                 }
-
-                int count = end - start;
-                if (count >= cellToMatch)
-                {
-                    for (int col = start; col < end; col++)
-                    {
-                        uniqueMatches.Add(new GridPosition { Row = row, Column = col });
-                    }
-                }
-
-                start = end;
             }
         }
-
-        for (int col = 0; col < cols; col++)
-        {
-            int start = 0;
-            while (start < rows)
-            {
-                BlockModel current = _blocksController.GetBlockModelByPosition(start, col);
-                if (current == null || current.IsEmptyElement || current.IsBlocked)
-                {
-                    start++;
-                    continue;
-                }
-
-                int end = start + 1;
-                while (end < rows)
-                {
-                    BlockModel next = _blocksController.GetBlockModelByPosition(end, col);
-                    if (next == null || next.IsEmptyElement || next.IsBlocked || next.Element != current.Element)
-                    {
-                        break;
-                    }
-
-                    end++;
-                }
-
-                int count = end - start;
-                if (count >= cellToMatch)
-                {
-                    for (int row = start; row < end; row++)
-                    {
-                        uniqueMatches.Add(new GridPosition { Row = row, Column = col });
-                    }
-                }
-
-                start = end;
-            }
-        }
-
-        return new List<GridPosition>(uniqueMatches);
+        return moves;
     }
 
+    private void AnimateFall(List<NormalizationMove> moves)
+    {
+        foreach (var move in moves)
+        {
+            InvokeFallEvent(move.TargetRow, move.Column);
+            InvokeFallEvent(move.SourceRow, move.Column);
+        }
+    }
+
+    private void InvokeFallEvent(int row, int col)
+    {
+        var model = _blocksController.GetBlockModelByPosition(row, col);
+        var view = _blockSpawner.GetBlockViewByModel(model);
+        if (model != null && view != null)
+        {
+            var targetPos = _blocksController.CalculateCellPosition(row, col);
+            OnFallBlock?.Invoke(model.Id, targetPos);
+        }
+    }
 
     private async void DestroyMatchesAndNormalize()
     {
-        List<GridPosition> matches = FindMatches();
-        if (matches.Count > 0)
+        var matches = FindMatches();
+        if (matches.Count == 0)
         {
-            foreach (var position in matches)
-            {
-                _blocksController.SetBlockEmptyState(position.Row, position.Column);
-                BlockModel model1 = _blocksController.GetBlockModelByPosition(position.Row, position.Column);
-                if (model1 == null ) continue;
-                ABlockView blockView1 = _blockSpawner.GetBlockViewByModel(model1);
-                if (blockView1 == null) continue;
-                OnDestroyBlock?.Invoke(model1);
-                
-                ChangeBlockedStatus(position.Column, position.Column,true);
-            }
-            
-            var tokenSource = new CancellationTokenSource();
-            await _taskDelayService.DelayedSwap(TaskDelayService.DelayedEntityEnum.BlocksMovement
-                ,_animationSettingsSo.DestructionSpeed, tokenSource);
-
-            if (tokenSource.IsCancellationRequested)
-            {
-                return;
-            } 
-            
-            foreach (var position in matches)
-            {
-                ChangeBlockedStatus(position.Column, position.Column,false);
-            }
-
-            NormalizeAllColumns(DestroyMatchesAndNormalize);
-            
-            OnEndDestroyBlocks?.Invoke();
+            FinalizeDestruction();
+            return;
         }
 
+        foreach (var pos in matches)
+        {
+            _blocksController.SetBlockEmptyState(pos.Row, pos.Column);
+            ChangeBlockedStatus(pos.Column, pos.Column, true);
+
+            var model = _blocksController.GetBlockModelByPosition(pos.Row, pos.Column);
+            var view = _blockSpawner.GetBlockViewByModel(model);
+
+            if (model != null && view != null)
+            {
+                OnDestroyBlock?.Invoke(model.Id);
+            }
+        }
+
+        await WaitForDestruction();
+
+        foreach (var pos in matches)
+        {
+            ChangeBlockedStatus(pos.Column, pos.Column, false);
+        }
+
+        NormalizeAllColumns(DestroyMatchesAndNormalize);
+        OnEndDestroyBlocks?.Invoke();
+    }
+
+    private void FinalizeDestruction()
+    {
         if (!_taskDelayService.HasWaiting(TaskDelayService.DelayedEntityEnum.BlocksMovement)
             && !_blocksController.IsAllElementEmpty())
         {
             _blocksController.SaveBlocks();
         }
     }
-    
+
+    private List<GridPosition> FindMatches()
+    {
+        var uniqueMatches = new HashSet<GridPosition>();
+        FindRowMatches(uniqueMatches);
+        FindColumnMatches(uniqueMatches);
+        return new List<GridPosition>(uniqueMatches);
+    }
+
+    private void FindRowMatches(HashSet<GridPosition> matches)
+    {
+        var gridLenght = _gridController.GetGridLenght();
+
+        for (int row = 0; row < gridLenght.row; row++)
+        {
+            int start = 0;
+            while (start < gridLenght.col)
+            {
+                var current = _blocksController.GetBlockModelByPosition(row, start);
+                if (!IsValidMatchCandidate(current)) { start++; continue; }
+
+                int end = start + 1;
+                while (end < gridLenght.col)
+                {
+                    var next = _blocksController.GetBlockModelByPosition(row, end);
+                    if (!IsValidMatchCandidate(next) || next.Element != current.Element) break;
+                    end++;
+                }
+
+                if (end - start >= CELL_TO_MATCH)
+                {
+                    for (int col = start; col < end; col++) matches.Add(new GridPosition { Row = row, Column = col });
+                }
+
+                start = end;
+            }
+        }
+    }
+
+    private void FindColumnMatches(HashSet<GridPosition> matches)
+    {
+        var gridLenght = _gridController.GetGridLenght();
+        
+        for (int col = 0; col < gridLenght.col; col++)
+        {
+            int start = 0;
+            while (start < gridLenght.row)
+            {
+                var current = _blocksController.GetBlockModelByPosition(start, col);
+                if (!IsValidMatchCandidate(current)) { start++; continue; }
+
+                int end = start + 1;
+                while (end < gridLenght.row)
+                {
+                    var next = _blocksController.GetBlockModelByPosition(end, col);
+                    if (!IsValidMatchCandidate(next) || next.Element != current.Element) break;
+                    end++;
+                }
+
+                if (end - start >= CELL_TO_MATCH)
+                    for (int row = start; row < end; row++) matches.Add(new GridPosition { Row = row, Column = col });
+
+                start = end;
+            }
+        }
+    }
+
+    private bool IsValidMatchCandidate(BlockModel block)
+    {
+        return block is { IsEmptyElement: false, IsBlocked: false };
+    }
+
+    private async Task WaitForAnimation()
+    {
+        var tokenSource = new CancellationTokenSource();
+        await _taskDelayService.DelayedSwap(TaskDelayService.DelayedEntityEnum.BlocksMovement, _animationSettingsSo.BlockMoveSpeed, tokenSource);
+    }
+
+    private async Task WaitForDestruction()
+    {
+        var tokenSource = new CancellationTokenSource();
+        await _taskDelayService.DelayedSwap(TaskDelayService.DelayedEntityEnum.BlocksMovement, _animationSettingsSo.DestructionSpeed, tokenSource);
+    }
+
+    private void ChangeBlockedStatus(int sourceCol, int targetCol, bool blocked)
+    {
+        for (int row = 0; row < _gridController.GetGridLenght().row; row++)
+        {
+            _blocksController.ChangeBlockedStatus(row, sourceCol, blocked);
+            _blocksController.ChangeBlockedStatus(row, targetCol, blocked);
+        }
+    }
+
     private void NextLevelHandler()
     {
         _taskDelayService.CancelEntity(TaskDelayService.DelayedEntityEnum.BlocksMovement);
@@ -292,24 +290,17 @@ public class BlockMovementController : IInitializable, IDisposable
     {
         _taskDelayService.CancelEntity(TaskDelayService.DelayedEntityEnum.BlocksMovement);
     }
-    
+
     private struct GridPosition
     {
         public int Row;
         public int Column;
     }
-    
+
     private struct NormalizationMove
     {
         public int SourceRow;
         public int Column;
         public int TargetRow;
-    }
-
-    public void Dispose()
-    {
-        _swipeInputController.OnSwapRequested -= OnSwapRequestedHandler;
-        _levelManagementService.OnRestartLevel -= RestartLevelHandler;
-        _levelManagementService.OnNextLevel -= NextLevelHandler;
     }
 }

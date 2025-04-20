@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using Zenject;
 
 public class SwipeInputController : IInitializable, IDisposable
@@ -9,8 +8,7 @@ public class SwipeInputController : IInitializable, IDisposable
     [Inject] private GridController _gridController;
     [Inject] private CameraService _cameraService;
     
-    // Порог свайпа в мировых координатах (настройте по необходимости)
-    private readonly float _swipeThreshold = 0.1f;
+    private float _swipeThreshold = 0.1f;
     private Vector2 _startTouchPosition;
     
     public event Action<SwipeEventArgs> OnSwapRequested;
@@ -53,24 +51,22 @@ public class SwipeInputController : IInitializable, IDisposable
     {
         if (_gridController.GetGridCoordinate(screenPos, out int row, out int col))
         {
-            var gridModel = _gridController.GetGridModel;
-            var blocksModel = _blocksController.GetBlocksModel;
+            var gridLenght = _gridController.GetGridLenght();
             
-            var tappedBlock = blocksModel.GetBlockModelByPosition(row, col);
+            var tappedBlock = _blocksController.GetBlockModelByPosition(row, col);
             if (tappedBlock.IsEmptyElement || tappedBlock.IsBlocked) return;
 
             int targetRow = row + (int)direction.y;
             int targetCol = col + (int)direction.x;
-            if (targetRow < 0 || targetRow >= gridModel.Rows || targetCol < 0 || targetCol >= gridModel.Columns)
+            if (targetRow < 0 || targetRow >= gridLenght.row 
+                              || targetCol < 0 || targetCol >= gridLenght.col)
+            {
                 return;
-
-            // Получаем ссылку на блок в целевой клетке (в модели)
-            var targetBlock = blocksModel.GetBlockModelByPosition(targetRow, targetCol);
+            }
             
-
-            // Если направление вверх и целевая клетка пуста – ход не разрешён.
-            if (direction == Vector2.up && targetBlock.IsEmptyElement
-                || targetBlock.IsBlocked)
+            var targetBlock = _blocksController.GetBlockModelByPosition(targetRow, targetCol);
+            
+            if (direction == Vector2.up && targetBlock.IsEmptyElement || targetBlock.IsBlocked)
             {
                 return;
             }

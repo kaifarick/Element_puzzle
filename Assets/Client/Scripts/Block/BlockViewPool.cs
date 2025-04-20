@@ -2,102 +2,117 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
-using Object = UnityEngine.Object;
 
 public class BlockViewPool : MonoBehaviour, IInitializable, IDisposable
 {
     [SerializeField] private Transform _poolContainer;
     [SerializeField] private Transform _blockContainer;
-    
-    private Dictionary<BlockElement, Queue<ABlockView>> _inactivePools = new();
-    private Dictionary<BlockElement, ABlockView> _prefabs = new();
-    private const int InitialPoolSize = 10;
+
+    private Dictionary<BlockElement, Queue<ABlockView>> _inactivePools;
+    private Dictionary<BlockElement, ABlockView> _prefabs;
+    private const int InitialPoolSize = 16;
+    private const int MaxPoolSize = 50;
     
     [Inject] private DiContainer _diContainer;
 
     public void Initialize()
     {
-        _inactivePools = new Dictionary<BlockElement, Queue<ABlockView>>();
-        _prefabs = new Dictionary<BlockElement, ABlockView>();
+        _inactivePools = new Dictionary<BlockElement, Queue<ABlockView>>(InitialPoolSize);
+        _prefabs = new Dictionary<BlockElement, ABlockView>(InitialPoolSize);
         
-         foreach (BlockElement element in Enum.GetValues(typeof(BlockElement)))
+        foreach (BlockElement element in Enum.GetValues(typeof(BlockElement)))
         {
-
             string resourceName = GetResourceName(element);
             ABlockView prefab = Resources.Load<ABlockView>(resourceName);
             if (prefab == null)
             {
-                Debug.LogError($"Resource not found: {resourceName}");
-                return;
+                Debug.LogWarning($"Resource not found: {resourceName}");
+                continue;
             }
 
             _prefabs[element] = prefab;
-            Queue<ABlockView> queue = new Queue<ABlockView>();
+            Queue<ABlockView> queue = new Queue<ABlockView>(InitialPoolSize);
             _inactivePools[element] = queue;
             
             for (int i = 0; i < InitialPoolSize; i++)
             {
-                ABlockView instance = _diContainer.InstantiatePrefabForComponent<ABlockView>(prefab, _poolContainer);
-                instance.gameObject.SetActive(false);
-                queue.Enqueue(instance);
+                CreatePooledInstance(element, prefab, queue);
             }
         }
     }
 
+    private void CreatePooledInstance(BlockElement element, ABlockView prefab, Queue<ABlockView> queue)
+    {
+        ABlockView instance = _diContainer.InstantiatePrefabForComponent<ABlockView>(prefab, _poolContainer);
+        instance.gameObject.SetActive(false);
+        instance.name = $"{element}_Pooled_{queue.Count}";
+        queue.Enqueue(instance);
+    }
+
     public ABlockView Spawn(BlockElement element, Vector3 position, Quaternion rotation)
     {
-        if (!_prefabs.ContainsKey(element))
+        if (!_prefabs.TryGetValue(element, out ABlockView prefab))
         {
             Debug.LogError($"No prefab for element {element}");
             return null;
         }
 
-        Queue<ABlockView> queue = _inactivePools[element];
-        ABlockView blockView;
+        var pool = _inactivePools[element];
+        ABlockView instance;
 
-        if (queue.Count > 0)
+        if (pool.Count > 0)
         {
-            blockView = queue.Dequeue();
+            instance = pool.Dequeue();
+        }
+        else if (pool.Count < MaxPoolSize)
+        {
+            instance = _diContainer.InstantiatePrefabForComponent<ABlockView>(prefab, _poolContainer);
         }
         else
         {
-            blockView = _diContainer.InstantiatePrefabForComponent<ABlockView>(_prefabs[element], _blockContainer);
+            instance = pool.Dequeue();
         }
 
-        blockView.transform.SetParent(_blockContainer);
-        blockView.transform.position = position;
-        blockView.transform.rotation = rotation;
-        blockView.gameObject.SetActive(true);
-        return blockView;
+        instance.transform.SetParent(_blockContainer);
+        instance.transform.position = position;
+        instance.transform.rotation = rotation;
+        instance.gameObject.SetActive(true);
+
+        return instance;
     }
 
     public void Despawn(ABlockView blockView)
     {
-        BlockElement element = blockView.BlockElement;
-        if (!_inactivePools.ContainsKey(element))
-        {
-            Destroy(blockView.gameObject);
-            return;
-        }
+        if (blockView == null) return;
 
+        BlockElement element = blockView.BlockElement;
         blockView.gameObject.SetActive(false);
         blockView.transform.SetParent(_poolContainer);
-        _inactivePools[element].Enqueue(blockView);
+
+        if (_inactivePools.TryGetValue(element, out var pool) && pool.Count < MaxPoolSize)
+        {
+            pool.Enqueue(blockView);
+        }
+        else
+        {
+            Destroy(blockView.gameObject);
+        }
     }
 
     public void Dispose()
     {
-        foreach (var queue in _inactivePools.Values)
+        foreach (var pool in _inactivePools.Values)
         {
-            while (queue.Count > 0)
+            while (pool.Count > 0)
             {
-                ABlockView blockView = queue.Dequeue();
+                ABlockView blockView = pool.Dequeue();
                 if (blockView != null)
                 {
                     Destroy(blockView.gameObject);
                 }
             }
         }
+
         _inactivePools.Clear();
         _prefabs.Clear();
     }
